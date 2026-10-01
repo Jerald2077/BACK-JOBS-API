@@ -82,13 +82,30 @@ public class UserControllerIntegrationTest {
     @Test
     @DisplayName("GET api/user/id/{id} integracion UserController, UserService, UserRepository, mock de la API externa")
     void getUserById() throws Exception {
+        // searchById pasa por getUsers(1) y filtra en memoria, asi que el mock
+        // debe devolver la respuesta paginada, no un usuario suelto.
         String jsonResponse = """
             {
-                "id": 2,
-                "email": "Juan.perez@gmail.com",
-                "first_name": "Juan",
-                "last_name": "Perez",
-                "avatar": "https://reqres.in/img/faces/2-image.jpg"
+                "page": 1,
+                "per_page": 6,
+                "total": 12,
+                "total_pages": 2,
+                "data": [
+                    {
+                        "id": 1,
+                        "email": "ana.gomez@gmail.com",
+                        "first_name": "Ana",
+                        "last_name": "Gomez",
+                        "avatar": "https://reqres.in/img/faces/1-image.jpg"
+                    },
+                    {
+                        "id": 2,
+                        "email": "Juan.perez@gmail.com",
+                        "first_name": "Juan",
+                        "last_name": "Perez",
+                        "avatar": "https://reqres.in/img/faces/2-image.jpg"
+                    }
+                ]
             }
             """;
         mockWebServer.enqueue(new MockResponse()

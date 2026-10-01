@@ -117,7 +117,8 @@ public class UserJobAssignedServiceImplTest {
 
         assertNotNull(result);
         assertEquals(2, result.size());
-        assertEquals(10, result.get(0).getUsers().get(0).getId());
+        // El fixture crea usuarios con id 1 y 2, y assignedResponse mapea el job 1 al usuario 1.
+        assertEquals(1, result.get(0).getUsers().get(0).getId());
         assertEquals(2, result.size());
 
         verify(jobService, times(1)).getAllJobs();

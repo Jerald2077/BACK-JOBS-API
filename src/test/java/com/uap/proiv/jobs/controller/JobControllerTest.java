@@ -1,170 +1,168 @@
 package com.uap.proiv.jobs.controller;
 
-import com.uap.proiv.jobs.service.JobService;
-import com.uap.proiv.jobs.service.UserJobAssignedService;
-import com.uap.proiv.jobs.service.UserService;
-
-import com.uap.proiv.jobs.dto.UserApiResponse;
-import com.uap.proiv.jobs.dto.UserJobAssigned;
-import com.uap.proiv.jobs.dto.User;
-import com.uap.proiv.jobs.dto.AssignRequest;
 import com.uap.proiv.jobs.dto.Job;
+import com.uap.proiv.jobs.service.JobService;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
-
+/**
+ * Test unitario de JobController con MockMvc en modo standalone.
+ *
+ * Corregido tras la actualizacion del fork ("Separacion Controllers"): JobController
+ * ya no expone el listado de usuarios ni la asignacion de trabajos. Ahora solo tiene
+ * GET /api/job/all y GET /api/job/{id}. El listado de usuarios paso a UserController
+ * (GET /api/user/{page}) y la asignacion a AssignController (POST /api/assign).
+ */
 @ExtendWith(MockitoExtension.class)
-
-public class JobControllerTest{
-
-    @Mock
-    UserService userService;
+public class JobControllerTest {
 
     @Mock
     JobService jobService;
-
-    @Mock
-    UserJobAssignedService userJobAssignedService;
 
     @InjectMocks
     JobController jobController;
 
     private MockMvc mockMvc;
-    private ObjectMapper objectMapper;
 
-    private UserApiResponse userApiResponse;
-    private List<User> users;
-    
+    private List<Job> jobs;
 
     @BeforeEach
     void setup() {
-        
         mockMvc = MockMvcBuilders.standaloneSetup(jobController).build();
-                
-        objectMapper = new ObjectMapper();
 
+        jobs = new ArrayList<>();
 
-        users = new ArrayList<>();
-        User user1 = new User();
-        user1.setId(1);
-        user1.setEmail("ejemplo@as.com");
-        user1.setAvatar("null");
-        user1.setFirstName("Juan");
-        user1.setLastName("Garcia");
-        users.add(user1);
+        Job job1 = new Job();
+        job1.setId(1);
+        job1.setName("Data Engineer");
+        job1.setSalary(5000);
+        job1.setHours(530);
+        job1.setResources(3);
+        jobs.add(job1);
 
-        User user2 = new User();
-        user2.setId(2);
-        user2.setEmail("ejemplo2@as.com");
-        user2.setAvatar("null");
-        user2.setFirstName("diane");
-        user2.setLastName("perez");
-        users.add(user2);
-
-        userApiResponse = new UserApiResponse();
-        userApiResponse.setPage(1);
-        userApiResponse.setPerPage(2);
-        userApiResponse.setTotal(2);
-        userApiResponse.setTotalPages(1);
-        userApiResponse.setData(users);
-
-        
-
+        Job job2 = new Job();
+        job2.setId(2);
+        job2.setName("Fronted Engineer");
+        job2.setSalary(6000);
+        job2.setHours(450);
+        job2.setResources(3);
+        jobs.add(job2);
     }
 
-        @Test 
-        @DisplayName("GET api /api/job/users/{page} retorna usuarios")
-        
-        void getUsers_success_initial_data() throws Exception {
-            when(userService.search(1)).thenReturn(userApiResponse)
-                .thenThrow(new RuntimeException("MSG"))
-                .thenReturn(userApiResponse);
+    @Test
+    @DisplayName("GET /api/job/all retorna la lista de trabajos")
+    void getAllJobs_success() throws Exception {
+        when(jobService.getAllJobs()).thenReturn(jobs);
 
-            mockMvc.perform(get("/api/job/users/1")).andExpect((status().isOk()))
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.data").isArray())
-            .andExpect(jsonPath("$.data.length()").value(2))
-            .andExpect(jsonPath("$.page").value(1))
-            .andExpect(jsonPath("$.total").value(2));
+        mockMvc.perform(get("/api/job/all"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(1))
+                .andExpect(jsonPath("$[0].name").value("Data Engineer"))
+                .andExpect(jsonPath("$[0].salary").value(5000.0))
+                .andExpect(jsonPath("$[1].name").value("Fronted Engineer"));
 
-            mockMvc.perform(get("/api/job/users/1"))
-            .andExpect((status().is5xxServerError()));
+        verify(jobService, times(1)).getAllJobs();
+    }
 
-            mockMvc.perform(get("/api/job/users/1"))
-            .andExpect((status().isOk()));
-        }
+    @Test
+    @DisplayName("GET /api/job/all con lista vacia retorna un array vacio")
+    void getAllJobs_listaVacia() throws Exception {
+        when(jobService.getAllJobs()).thenReturn(new ArrayList<>());
 
-        @Test
-        @DisplayName("GET api /api/job/users/{page} Excepcion retornada por el service")
-        void getUsers_serviceException() throws Exception {
-            when(userService.search(2)).thenThrow(new RuntimeException("Service error"));
-                
+        mockMvc.perform(get("/api/job/all"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(0));
 
-            mockMvc.perform(get("/api/job/users/2"))
+        verify(jobService, times(1)).getAllJobs();
+    }
+
+    @Test
+    @DisplayName("GET /api/job/all - camino de excepcion del service retorna 500")
+    void getAllJobs_serviceException() throws Exception {
+        when(jobService.getAllJobs()).thenThrow(new RuntimeException("Error al leer jobs.json"));
+
+        mockMvc.perform(get("/api/job/all"))
                 .andExpect(status().isInternalServerError())
-                .andExpect(content().string("Service error"));
-        }
+                .andExpect(content().string("Error al leer jobs.json"));
 
-        @Test
-        @DisplayName("POST /api/job/assignJob/ Asignar trabajo a un usuario")
-        void postAssign_success() throws Exception{
-            AssignRequest assignRequest = new AssignRequest();
-            assignRequest.setRequestNumber(123);
-            assignRequest.setClientName("Name");
+        verify(jobService, times(1)).getAllJobs();
+    }
 
-            List<Job> jobs = new ArrayList<>();
+    @Test
+    @DisplayName("GET /api/job/{id} retorna el trabajo pedido")
+    void getJobById_success() throws Exception {
+        when(jobService.getJobById(2)).thenReturn(jobs.get(1));
 
-            Job job1 = new Job();
-            job1.setId(1);
-            job1.setName("Developer");
-            job1.setSalary(50000);
-            job1.setHours(2000);
-            job1.setResources(3);
-            jobs.add(job1);
+        mockMvc.perform(get("/api/job/2"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").value(2))
+                .andExpect(jsonPath("$.name").value("Fronted Engineer"))
+                .andExpect(jsonPath("$.resources").value(3.0));
 
-            Job job2 = new Job();
-            job2.setId(2);
-            job2.setName("Manager");
-            job2.setSalary(60000);
-            job2.setHours(2500);
-            job2.setResources(5);
-            jobs.add(job2);
+        verify(jobService, times(1)).getJobById(2);
+    }
 
-            List<UserJobAssigned> userJobAssignedList = new ArrayList<>();
-            userJobAssignedList.add(new UserJobAssigned(users, job1));
-            userJobAssignedList.add(new UserJobAssigned(List.of(users.getFirst()), job2));
+    @Test
+    @DisplayName("GET /api/job/{id} - id inexistente: el service lanza NoSuchElement y retorna 500")
+    void getJobById_noEncontrado() throws Exception {
+        when(jobService.getJobById(999)).thenThrow(new NoSuchElementException("No value present"));
 
-            when(userJobAssignedService.assign()).thenReturn(userJobAssignedList);
+        mockMvc.perform(get("/api/job/999"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().string("No value present"));
 
-            mockMvc.perform(post("/api/job/assign")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(assignRequest)))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.Assign").isNotEmpty())
-            .andExpect(jsonPath("$.Assign[0].job.name").value("Developer"))
-            .andExpect(jsonPath("$.Assign[1].job.name").value("Manager"))
+        verify(jobService, times(1)).getJobById(999);
+    }
 
-            .andExpect(jsonPath("$.Assign[0].users[0].first_name").value("Juan"))
+    @Test
+    @DisplayName("GET /api/job/{id} con id no numerico no matchea el handler")
+    void getJobById_idInvalido() throws Exception {
+        mockMvc.perform(get("/api/job/abc"))
+                .andExpect(status().is4xxClientError());
+    }
 
-            .andExpect(jsonPath("$.Request_Number").value(123))
-            .andExpect(jsonPath("$.Client").value("Name"));
-        }
+    @Test
+    @DisplayName("Tras la actualizacion del fork, /api/job/users/{page} y /api/job/assign ya no existen")
+    void rutasMigradasYaNoPertenecenAJobController() throws Exception {
+        // El listado de usuarios vive ahora en UserController: GET /api/user/{page}.
+        // Sobre JobController son dos segmentos que no matchean ningun patron: 404.
+        mockMvc.perform(get("/api/job/users/1"))
+                .andExpect(status().isNotFound());
+
+        // La asignacion vive ahora en AssignController: POST /api/assign.
+        // Sobre JobController la ruta /api/job/assign si matchea el patron
+        // GET /api/job/{id}, por eso el resultado es 405 (metodo no permitido)
+        // y no 404: el path existe, el verbo POST no.
+        mockMvc.perform(post("/api/job/assign")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"requestNumber\":123,\"clientName\":\"Name\"}"))
+                .andExpect(status().isMethodNotAllowed());
+    }
 }

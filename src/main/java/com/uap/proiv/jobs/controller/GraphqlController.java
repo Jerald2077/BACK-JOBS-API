@@ -39,6 +39,11 @@ public class GraphqlController {
         return userService.searchById(id);
     }
 
+    @QueryMapping
+    public Job jobById(@Argument int id) {
+        return jobService.getJobById(id);
+    }
+
     @SchemaMapping(typeName = "User", field = "job")
     public Job job(User user) {
         return jobService.getJobById(user.getJobId());
@@ -47,6 +52,11 @@ public class GraphqlController {
     @MutationMapping
     public Job addJob(@Argument JobRequest request) {
         return jobService.add(request);
+    }
+
+    @MutationMapping
+    public User addUser(@Argument UserRequest request) {
+        return userService.add(request);
     }
 
 }
